@@ -1,4 +1,4 @@
-####################################### ~ Loading libraries ~ ##########################################################################################
+####################################### ~ Loading libraries ~ #####
 library("DESeq2")
 library(dplyr)
 library("RColorBrewer")
@@ -16,7 +16,8 @@ library(pcaExplorer)
 library(GenomicFeatures)
 library(goseq)
 library(GO.db)
-####################################### ~ DECLARE YOUR VARIABLES HERE ~ #################################################################################
+library(fgsea)
+####################################### ~ DECLARE YOUR VARIABLES HERE ~ #####
 myspecies <- "H.sapiens"
 
 mygenes <- c("MYD88", "TRAIP", "LRRFIP1", "PIK3IP1", "TRAM1", "DDX58", "TLR3") #, "TLR7") 
@@ -29,7 +30,7 @@ resultsdir <- paste0(directory, "results")
 baselevel <-  "Adult" 
 baselevel2 <- "Kid"
 ageclass <- "mocks"
-
+myresdir <- "analysis1"
 testgroup <- "/salmon_res/"
 
 dir.create(paste0(resultsdir))
@@ -38,18 +39,12 @@ dir.create(paste0( resultsdir, testgroup))
 
 resultsdir <- paste0(resultsdir,testgroup)
 resultsdir
-dir.create(paste0(resultsdir, ageclass))
-resultsdir <- paste0(resultsdir, ageclass)
+dir.create(paste0(resultsdir, myresdir))
+resultsdir <- paste0(resultsdir, myresdir)
 resultsdir
-
-
 
 sample_table <- read.table(paste0("D:/17.SARSC-V2_experiment/YZ_experiment.txt"), sep = "\t", header=TRUE)
 length(sample_table)
-sample_table
-#sample_table <- sample_table[sample_table$Treatment == 'Mock',]
-#sample_table
-
 
 (pull(sample_table, `ID`))
 
@@ -58,16 +53,6 @@ sampleFiles
 class(sampleFiles)
 
 all(file.exists(sampleFiles))
-
-#s <- catchSalmon(sampleFiles)
-
-#s$annotation
-#head(s$counts)
-
-#dge <- DGEList(counts = s$counts/s$annotation$Overdispersion, genes = s$annotation, remove.zeros = T)
-
-
-#all(file.exists(sampleFiles))
 
 names(sampleFiles) <- paste0(pull(sample_table, 'ID'), '_', 
                              pull(sample_table, 'Experiment_number'))
@@ -85,9 +70,6 @@ sampleCondition2 <- pull(sample_table, fac2)
 sampleCondition2
 length(sampleFiles)
 
-
-
-
 sampleTable <- data.frame(sampleName = names(sampleFiles), fileName = sampleFiles, 
                           age = as.factor(sampleCondition), condition = as.factor(sampleCondition1),
                           pairID = as.factor(sampleCondition2))
@@ -96,7 +78,6 @@ str(sampleTable)
 
 group = as.factor(sampleTable$condition)
 group
-
 
 tx2gene <- read.table("D:/17.SARSC-V2_experiment/tx2genesymbol.txt", header=FALSE, sep="\t")
 
@@ -115,7 +96,7 @@ head(sampleTable)
 (sampleTable$age)
 dds <- DESeqDataSetFromTximport(txi = count_data,
                                 colData = sampleTable,
-                                design = ~ age + condition + condition:age)
+                                design = ~ age + condition + condition:age )
 
 dds
 
@@ -129,14 +110,11 @@ ddsKEEP <- dds[keep,]
 
 ddsKEEP
 
-ddsKEEP <- estimateSizeFactors(ddsKEEP)
-ddsKEEP <- estimateDispersions(ddsKEEP)
-ddsKEEP <- nbinomWaldTest(ddsKEEP)
-
+ddsKEEP <- DESeq(ddsKEEP)
 colData(ddsKEEP)
 
 resultsNames(ddsKEEP)
-ageclass <- 'mocks'
+ageclass <- myresdir
 nonnormalized_counts <- counts(dds)
 write.table(nonnormalized_counts, file=paste(resultsdir, "/", ageclass, "sarscov2_non_normalized_counts.txt", sep = ""), sep="\t", quote=F, col.names=NA)
 
@@ -159,38 +137,29 @@ resCon <- results(ddsKEEP, tidy = F, list(c("age_Kid_vs_Adult", "ageKid.conditio
 resCon
 resAge
 
-res <- c(resAge, resCon)
-res
-
+resAge$log2FoldChange
 sum(resAge$pvalue<0.05, na.rm = T)
 
 table(is.na(resAge$padj))
 
-sum(resAge$padj<0.1, na.rm = T)
-sum(resAge$log2FoldChange>2)
-sum(resAge$log2FoldChange<-2)
-(testgroup <- ageclass)
-
 resultsNames(ddsKEEP)
 resSig= resAge[which(resAge$padj<0.1),]
-sum(resSig$log2FoldChange>2)
-(resSig[order(resSig$log2FoldChange)>2,])
-tail(resSig[order(resSig$log2FoldChange)< -2,])
-write.csv( as.data.frame(resSig), file=paste(resultsdir, "/", testgroup, "_DEGS_hsapiens.csv", sep = "") )
 
+testgroup <- ageclass
+write.csv( as.data.frame(resSig), file=paste(resultsdir, "/", testgroup, "_DEGS_hsapiens.csv", sep = "") )
+resultsdir
 (resSig_up= resSig[which(resSig$log2FoldChange > 2),])
-resSig_up=resSig_up[order(resSig_up$log2FoldChange),]
+
 head(resSig_up)
 write.csv( as.data.frame(resSig_up), file=paste(resultsdir, "/", testgroup,"_UP_DEGS_hsapiens.csv", sep = "" ))
 
-
 resSig_down= resSig[which(resSig$log2FoldChange < -2),]
-resSig_down=resSig_down[order(resSig_down$log2FoldChange),]
+resSig_down
+
 head(resSig_down)
 write.csv( as.data.frame(resSig_down), file=paste(resultsdir, "/", testgroup, "_DOWN_DEGS_hsapiens.csv", sep = ""))
 
-####################################### ~ MA plots ~ ####################################################################################
-
+####################################### ~ MA plots ~ ####
 plotMA(resAge,ylim=c(-2,2))
 
 plotDispEsts( ddsKEEP, ylim = c(1e-6, 1e1) )
@@ -202,17 +171,17 @@ resLFC
 plotMA(resLFC,ylim=c(-5,5))
 abline(h=c(-0.5,0.5), col="red")
 # create bins using the quantile function
-qs <- c( 0, quantile( res$baseMean[res$baseMean > 0], 0:7/7 ) )
+qs <- c( 0, quantile( resAge$baseMean[resAge$baseMean > 0], 0:7/7 ) )
 # "cut" the genes into the bins
-bins <- cut( res$baseMean, qs )
+bins <- cut( resAge$baseMean, qs )
 # rename the levels of the bins using the middle point
 levels(bins) <- paste0("~",round(.5*qs[-1] + .5*qs[-length(qs)]))
 # calculate the ratio of £p£ values less than .01 for each bin
-ratios <- tapply( res$pvalue, bins, function(p) mean( p < .01, na.rm=TRUE ) )
+ratios <- tapply( resAge$pvalue, bins, function(p) mean( p < .01, na.rm=TRUE ) )
 # plot these ratios
 barplot(ratios, xlab="mean normalized count", ylab="ratio of small $p$ values")
 
-####################################### ~ PCA plots ~ ##############################################################################
+####################################### ~ PCA plots ~ ####
 rld <- rlog(ddsKEEP)
 class(rld)
 
@@ -304,7 +273,7 @@ for (mygene in mygenes) {
   print(p)
 }
 
-####################################### ~ Getting the top genes ~ #################################################################################
+####################################### ~ Getting the top genes ~ ####
 resultsNames(ddsKEEP)
 resD <- results(ddsKEEP, name = "age_Kid_vs_Adult", alpha = 0.1)
 resD
@@ -317,17 +286,20 @@ topDESeq2
 write.csv(topDESeq2, file=paste(resultsdir, "/", testgroup, "_hsapiens_topDESeq2.csv", sep = ""))
 
 
-(topgenes <- head(rownames(resDSort),200))
+(topgenes <- head(rownames(resDSort),40))
 mat <- assay(rld)[topgenes,]
 (mat <- mat -rowMeans(mat))
 
 col.pan <- colorpanel(100, "blue","white","red")
 #Non scaled heatmap for topgenes
-
 heatmap.2(mat, col=col.pan, Rowv=TRUE, scale="none", trace="none", labRow= "", labCol = sampleCondition)
 
 #Scaled heatmap for topgenes
 scaled.mat<-t(scale(t(mat)))
+t <- scaled.mat[,c(TRUE, FALSE)]
+head(scaled.mat)
+sampleCondition
+
 heatmap.2(scaled.mat, col=col.pan, Rowv=TRUE, scale="none",
           trace="none", labRow= "",margins = c(10,8),cexRow=0.5, cexCol=1, keysize=1,labCol = sampleCondition)
 
@@ -335,7 +307,7 @@ pdf(paste0(resultsdir, "/", testgroup,"_VSD_scaled_topgenes_heatmap.pdf"))
 heatmap.2(scaled.mat, col=col.pan, Rowv=TRUE, scale="none",
           trace="none",margins = c(10,8),cexRow=0.5, cexCol=1, keysize=1,labCol = sampleCondition)
 dev.off()
-####################################### ~ Another method of PCA plot ~ ###########################################################################
+####################################### ~ Another method of PCA plot ~ ####
 pdf(paste0(resultsdir, "/", testgroup,"_VSD_PCA_plot.pdf"))
 vsdata <- vst(ddsKEEP, blind=FALSE)
 plotPCA(vsdata, intgroup="age")
@@ -370,7 +342,6 @@ heatmap.2( assay(rld)[ topVarGenes, ], scale="row",
 dev.off()
 
 #Heatmap of the count matrix
-
 select <- order(rowMeans(counts(ddsKEEP,normalized=TRUE)),
                 decreasing=TRUE)[1:20]
 
@@ -434,7 +405,7 @@ head(count_data)
 #import data into DESeq2
 dds <- DESeqDataSetFromTximport(txi = count_data,
                                 colData = sampleTable,
-                                design = ~ age + condition)
+                                design = ~ age + condition : condition:age)
 dds
 baselevel
 dds$age <- relevel(dds$age, ref = baselevel)
@@ -446,8 +417,6 @@ keep <- rowSums(counts(dds)) >= 10
 ddsKEEP <- dds[keep,]
 
 ddsKEEP$sampleName
-
-#gene.vector
 
 rowsum.threshold <- 10
 fdr.threshold <- 0.1
@@ -472,8 +441,6 @@ options(width = 84)
 class(assayed.genes)
 gene.vector=as.integer(assayed.genes%in%de.genes)
 
-
-
 gene.vector
 
 (names(gene.vector)=assayed.genes)
@@ -483,7 +450,6 @@ names(gene.vector)
 #######***************************Biomart GO::terms matching*******************************########################
 # define biomart object
 ensembl<- useMart("ensembl")
-
 ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
 
 sp <- useDataset("hsapiens_gene_ensembl",mart = ensembl)
@@ -502,9 +468,6 @@ write.csv(as.data.frame(EG2KEGG), file = paste0(resultsdir, "/", testgroup, "_ge
 GTF <- "../../gencode.v36.annotation.gtf"
 
 txdb = makeTxDbFromGFF(GTF, format = "gtf", )
-#saveDb(txdb, file = "gencode.v36.annotation.TxDb")
-
-
 (txdb.allcolumns <- transcripts(txdb))
 
 gene.vector
@@ -536,7 +499,6 @@ capture.output(for(go in enriched.GO[1:88]) { print(GOTERM[[go]])
 
 goResults[goResults$ontology == 'BP',]
 goBPRes <- goResults[goResults$ontology == 'BP',] 
-
 
 ##########*************************visualize the top 30 hits*****************************##########################
 pdf(paste0(resultsdir, "/", testgroup,"_goseq_enrichment.pdf"))
@@ -589,6 +551,10 @@ goBPRes %>%
 write.csv(as.data.frame(goBPRes), file = paste0(resultsdir,"/", testgroup, myspecies, "_go_bp.csv"))
 
 ####################################Gene Set Enrichment Analysis#############################
+ddsKEEP <- DESeq(ddsKEEP)
+resAge <- results(ddsKEEP, tidy = T, name = "age_Kid_vs_Adult")
+resCon <- results(ddsKEEP, tidy = T, list(c("age_Kid_vs_Adult", "ageKid.conditionVirus")))
+resAge
 res2 <- resAge %>% 
   dplyr::select(row, stat) %>% 
   na.omit() %>% 
@@ -600,20 +566,20 @@ ranks <- tibble::deframe(res2)
 head(ranks, 20)
 
 ###Different pathways from MiSigDB ###hallmark pathways
-pathways.hallmark <- gmtPathways("h.all.v7.2.symbols.gmt")
+pathways.hallmark <- gmtPathways("../../h.all.v7.2.symbols.gmt")
 
 pathways.hallmark %>% 
   head() %>% 
   lapply(head)
 
-fgseaRes <- fgsea(pathways=pathways.hallmark, stats=ranks, nperm = 1000)
+fgseaRes <- fgsea(pathways=pathways.hallmark, stats=ranks) #, nperm = 1000)
 
 fgseaResTidy <- fgseaRes %>%
   as_tibble() %>%
   arrange(desc(NES))
-
+head(fgseaResTidy)
 fgseaResTidy %>% 
-  dplyr::select(-leadingEdge, -ES, -nMoreExtreme) %>% 
+  dplyr::select(-leadingEdge, -ES, -leadingEdge) %>% 
   arrange(padj) %>% 
   DT::datatable()
 
@@ -623,9 +589,10 @@ p <-ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
     labs(x="Pathway", y="Normalized Enrichment Score",
          title="Hallmark pathways NES from GSEA (Age)") + 
     theme_minimal()
-
+ggsave(p, file=paste0(resultsdir, "/", testgroup, "hallmark_fgsea_without_treatment",".png", sep = ""), width = 20, height = 28, units = "cm")
+pdf(paste0(resultsdir, "/", testgroup,"hallmark_fgsea_without_treatment.pdf"))
 print(p)
-
+dev.off()
 res2 <- resCon %>% 
   dplyr::select(row, stat) %>% 
   na.omit() %>% 
@@ -633,20 +600,20 @@ res2 <- resCon %>%
   group_by(row) %>% 
   summarize(stat=mean(stat))
 
-pathways.hallmark <- gmtPathways("h.all.v7.2.symbols.gmt")
+pathways.hallmark <- gmtPathways("../../h.all.v7.2.symbols.gmt")
 
 pathways.hallmark %>% 
   head() %>% 
   lapply(head)
 
-fgseaRes <- fgsea(pathways=pathways.hallmark, stats=ranks, nperm = 1000)
+fgseaRes <- fgsea(pathways=pathways.hallmark, stats=ranks) #, nperm = 1000)
 
 fgseaResTidy <- fgseaRes %>%
   as_tibble() %>%
   arrange(desc(NES))
 
 fgseaResTidy %>% 
-  dplyr::select(-leadingEdge, -ES, -nMoreExtreme) %>% 
+  dplyr::select(-leadingEdge, -ES, -leadingEdge) %>% 
   arrange(padj) %>% 
   DT::datatable()
 
@@ -656,9 +623,13 @@ p <-ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
   labs(x="Pathway", y="Normalized Enrichment Score",
        title="Hallmark pathways NES from GSEA (Infected)") + 
   theme_minimal()
-
+ggsave(p, file=paste0(resultsdir, "/", testgroup, "hallmark_fgsea_with_treatment",".png", sep = ""), width = 20, height = 28, units = "cm")
+pdf(paste0(resultsdir, "/", testgroup,"hallmark_fgsea_treatment.pdf"))
+print(p)
+dev.off()
 print(p)
 
+resultsdir
 #### ~ end of analysis ####
 graphics.off()
 rm(list = ls())
