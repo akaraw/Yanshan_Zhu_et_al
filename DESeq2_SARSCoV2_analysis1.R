@@ -181,6 +181,45 @@ ratios <- tapply( resAge$pvalue, bins, function(p) mean( p < .01, na.rm=TRUE ) )
 # plot these ratios
 barplot(ratios, xlab="mean normalized count", ylab="ratio of small $p$ values")
 
+####Volcano Plots with enhancedVolcano####
+resLFC
+rownames(resLFC)
+library('EnhancedVolcano')
+
+keyvals <- ifelse(
+  resLFC$log2FoldChange < -2, 'royalblue',
+  ifelse(resLFC$log2FoldChange > 2, 'gold',
+         'black'))
+keyvals
+keyvals[is.na(keyvals)] <- 'black'
+names(keyvals)[keyvals == 'gold'] <- 'high'
+names(keyvals)[keyvals == 'black'] <- 'mid'
+names(keyvals)[keyvals == 'royalblue'] <- 'low'
+
+resLFC
+EnhancedVolcano(resLFC,
+                lab = rownames(resLFC),
+                x = 'log2FoldChange',
+                y = 'pvalue',
+                selectLab = rownames(resLFC)[which(names(keyvals) %in% c('high', 'low'))],
+                #selectLab = c('OASL','CXCL10','ISG15', 'USP41','IFITM1','MX1'),
+                xlab = bquote(~Log[2]~ 'fold change'),
+                title = 'Volcano plot - Effect of treatment irrespective of age',
+                subtitle = 'Treatment groups (Mock vs Virus)',
+                pCutoff = 0.05, #10e-14,
+                FCcutoff = 2.0,
+                pointSize = 4.0,
+                labSize = 6.0,
+                labCol = 'black',
+                labFace = 'bold',
+                boxedLabels = TRUE,
+                colAlpha = 4/5,
+                legendPosition = 'right',
+                legendLabSize = 14,
+                legendIconSize = 4.0,
+                drawConnectors = TRUE,
+                widthConnectors = 1.0,
+                colConnectors = 'black')
 ####################################### ~ PCA plots ~ ####
 rld <- rlog(ddsKEEP)
 class(rld)
