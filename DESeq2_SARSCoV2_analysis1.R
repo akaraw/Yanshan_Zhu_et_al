@@ -22,7 +22,7 @@ library('EnhancedVolcano')
 ####################################### ~ DECLARE YOUR VARIABLES HERE ~ #####
 myspecies <- "H.sapiens"
 
-mygenes <- c("MYD88", "TRAIP", "LRRFIP1", "PIK3IP1", "TRAM1", "DDX58", "TLR3") #, "TLR7") 
+mygenes <- c("MYD88", "TMPRSS2", "TRAIP", "LRRFIP1", "PIK3IP1", "TRAM1", "DDX58", "TLR3") #, "TLR7") 
 #"TICAM1", "IRF3", "IRAK4", "IRAK2", "TRAF6", "IFIH1", "DHX58",
 #"MAVS")
 directory <- "D:/17.SARSC-V2_experiment/"
@@ -45,7 +45,7 @@ dir.create(paste0(resultsdir, myresdir))
 resultsdir <- paste0(resultsdir, myresdir)
 resultsdir
 
-####################################### ~ Count tables and metadata ~ ####
+####################################### ~ Count tables and metadata ###############################################
 sample_table <- read.table(paste0("D:/17.SARSC-V2_experiment/YZ_experiment.txt"), sep = "\t", header=TRUE)
 length(sample_table)
 sample_table
@@ -95,7 +95,7 @@ count_data <- tximport(files = sampleFiles,
                        tx2gene = tx2gene,
                        ignoreTxVersion = FALSE)
 
-####################################### ~ Import data into DESeq2 and process ~ #####
+####################################### ~ Import data into DESeq2 and process#################################
 head(sampleTable)
 (sampleTable$age)
 
@@ -114,9 +114,8 @@ ddsKEEP <- dds[keep,]
 
 ddsKEEP <- DESeq(ddsKEEP) #DESeq analysis
 colData(ddsKEEP)
-
-####################################### ~ First round of results and other stats ~ #####
 resultsNames(ddsKEEP)
+####################################### ~ First round of results and other stats#################################################
 ageclass <- myresdir
 nonnormalized_counts <- counts(dds)
 write.table(nonnormalized_counts, file=paste(resultsdir, "/", ageclass, 
@@ -132,30 +131,74 @@ resultsdir
 class(normalized_counts)
 write.table(t, file=paste(resultsdir, "/", ageclass, "_hsapiens_normalized_counts.txt", sep = ""), sep="\t", quote=F, col.names=NA)
 
-####################################### ~ Different contrast of the results from DEseq2 analysis ~ ####
+####################################### ~ Different contrast of the results from DEseq2 analysis####################################
 #What is the difference between Kid and Age without treatment?
 resAge <- results(ddsKEEP, tidy = F, name = "age_Kid_vs_Adult", alpha = 0.05)
-#With treatment what is the difference between the kid and the adult.
-resCon <- results(ddsKEEP, tidy = F, list(c("age_Kid_vs_Adult", "ageKid.conditionVirus")), alpha = 0.05)
-#The following test if condition effect different in Kids compared to adults
-resInt <- results(ddsKEEP, tidy = F, list(c("ageKid.conditionVirus", "ageAdult.conditionVirus")))
-resInt
-
-resAge$log2FoldChange
-sum(resAge$pvalue<0.05, na.rm = T)
-table(is.na(resAge$padj))
+res <- resAge
+DGE.df <- as.data.frame(res)
+DGE.df
+getwd()
+write.csv(DGE.df, file = "differential_kid_vs_adult_without_treatment.csv")
+res$log2FoldChange
+sum(res$padj<0.05, na.rm = T)
+dge res[which(res$padj < 0.05),]
+table(is.na(res$padj))
 resultsNames(ddsKEEP)
 
-resSig= resAge[which(resAge$padj<0.05),] #Significant genes
+resSig= res[which(res$padj<0.05),] #Significant genes
 testgroup <- ageclass
-write.csv( as.data.frame(resSig), file=paste(resultsdir, "/", testgroup, "_DEGS_hsapiens.csv", sep = "") )
+write.csv( as.data.frame(resSig), file=paste(resultsdir, "/", testgroup, "_kid_vs_adult_without_virus_DEGS_hsapiens.csv", sep = "") )
 resultsdir
 (resSig_up= resSig[which(resSig$log2FoldChange > 2),])
 head(resSig_up)
-write.csv( as.data.frame(resSig_up), file=paste(resultsdir, "/", testgroup,"_UP_DEGS_hsapiens.csv", sep = "" ))
+write.csv( as.data.frame(resSig_up), file=paste(resultsdir, "/", testgroup,"_kid_vs_adult_without_virus_UP_DEGS_hsapiens.csv", sep = "" ))
 resSig_down= resSig[which(resSig$log2FoldChange < -2),]
 head(resSig_down)
-write.csv( as.data.frame(resSig_down), file=paste(resultsdir, "/", testgroup, "_DOWN_DEGS_hsapiens.csv", sep = ""))
+write.csv( as.data.frame(resSig_down), file=paste(resultsdir, "/", testgroup, "_kid_vs_adult_without_virus_DOWN_DEGS_hsapiens.csv", sep = ""))
+rm(res)
+
+#With treatment what is the difference between the kid and the adult.
+
+resCon <- results(ddsKEEP, tidy = F, list(c("age_Kid_vs_Adult", "ageKid.conditionVirus")), alpha = 0.05)
+head(resCon)
+res <- resCon
+res$log2FoldChange
+sum(res$padj<0.05, na.rm = T)
+table(is.na(res$padj))
+resultsNames(ddsKEEP)
+
+resSig= res[which(res$padj<0.05),] #Significant genes
+testgroup <- ageclass
+write.csv( as.data.frame(resSig), file=paste(resultsdir, "/", testgroup, "_kid_vs_adult_with_viruseffect_DEGS_hsapiens.csv", sep = "") )
+resultsdir
+(resSig_up= resSig[which(resSig$log2FoldChange > 2),])
+head(resSig_up)
+write.csv( as.data.frame(resSig_up), file=paste(resultsdir, "/", testgroup,"_kid_vs_adult_with_viruseffect_UP_DEGS_hsapiens.csv", sep = "" ))
+resSig_down= resSig[which(resSig$log2FoldChange < -2),]
+head(resSig_down)
+write.csv( as.data.frame(resSig_down), file=paste(resultsdir, "/", testgroup, "_kid_vs_adult_with_viruseffect_DOWN_DEGS_hsapiens.csv", sep = ""))
+rm(res)
+
+#The effect of treatment (i.e. Virus) in Kids only
+resKid <- results(ddsKEEP, tidy = F, list(c("condition_Virus_vs_Mock", "ageKid.conditionVirus")), alpha = 0.05)
+head(resKid)
+res <- resKid
+#res$log2FoldChange
+sum(res$padj<0.05, na.rm = T)
+table(is.na(res$padj))
+resultsNames(ddsKEEP)
+
+resSig= res[which(res$padj<0.05),] #Significant genes
+testgroup <- ageclass
+write.csv( as.data.frame(resSig), file=paste(resultsdir, "/", testgroup, "_kid_effect_of_virus_DEGS_hsapiens.csv", sep = "") )
+resultsdir
+(resSig_up= resSig[which(resSig$log2FoldChange > 2),])
+head(resSig_up)
+write.csv( as.data.frame(resSig_up), file=paste(resultsdir, "/", testgroup,"_kid_effect_of_virus_UP_DEGS_hsapiens.csv", sep = "" ))
+resSig_down= resSig[which(resSig$log2FoldChange < -2),]
+head(resSig_down)
+write.csv( as.data.frame(resSig_down), file=paste(resultsdir, "/", testgroup, "_kid_effect_of_virus_DOWN_DEGS_hsapiens.csv", sep = ""))
+rm(res)
 
 ####################################### ~ MA plots ~ ####
 plotMA(resAge,ylim=c(-2,2))
@@ -177,7 +220,7 @@ qs <- c( 0, quantile( resAge$baseMean[resAge$baseMean > 0], 0:7/7 ) )
 bins <- cut( resAge$baseMean, qs )
 # rename the levels of the bins using the middle point
 levels(bins) <- paste0("~",round(.5*qs[-1] + .5*qs[-length(qs)]))
-# calculate the ratio of £p£ values less than .01 for each bin
+# calculate the ratio of Â£pÂ£ values less than .01 for each bin
 ratios <- tapply( resAge$pvalue, bins, function(p) mean( p < .01, na.rm=TRUE ) )
 # plot these ratios
 barplot(ratios, xlab="mean normalized count", ylab="ratio of small $p$ values")
@@ -210,96 +253,7 @@ pcaplot(rld, pcX = 2, pcY = 3)
 pcaplot(rld, pcX = 3, pcY = 2)
 pcaplot(rld, pcX = 1, pcY = 2)
 
-####################################### ~ Volcano Plots with enhancedVolcano ~ ####
-resultsNames(ddsKEEP)
-#This is for the With treatment what is the difference between the kid and the adult. ~ resCon
-keep <- rowSums(counts(dds)) > 10
-ddsCon <- dds[keep,]
-ddsCon <- DESeq(ddsCon)
-resCon <- results(ddsCon, tidy = F, list(c("age_Kid_vs_Adult", "ageKid.conditionVirus")), alpha = 0.05)
-res <- resCon
-res$log2FoldChange
-keyvals <- ifelse(
-  res$log2FoldChange < -1.5, 'royalblue',
-  ifelse(res$log2FoldChange > 1.5, 'gold',
-         'black'))
-
-keyvals[is.na(keyvals)] <- 'black'
-names(keyvals)[keyvals == 'gold'] <- 'high'
-names(keyvals)[keyvals == 'black'] <- 'mid'
-names(keyvals)[keyvals == 'royalblue'] <- 'low'
-
-EnhancedVolcano(res,
-                lab = rownames(res),
-                x = 'log2FoldChange',
-                y = 'padj', 
-                selectLab = rownames(res)[which(names(keyvals) %in% c('high', 'low'))],
-                #selectLab = c('OASL','CXCL10','ISG15', 'USP41','IFITM1','MX1'),
-                xlab = bquote(~Log[2]~ 'fold change'),
-                title = 'Volcano plot - Difference in Kids compared to Adults ',
-                subtitle = '~ with treatment effect(i.e. Virus infection)',
-                pCutoff = 0.05,
-                FCcutoff = 1.5,
-                pointSize = 4.0,
-                labSize = 3.0,
-                labCol = 'black',
-                labFace = 'bold',
-                boxedLabels = F,
-                ylim = c(0,2.5),
-                xlim = c(-10,10),
-                colAlpha = 4/5,
-                legendPosition = 'right',
-                legendLabels = c("NS", bquote(~Log[2]~ 'Fold change(1.5)'), 'p-adj(0.05)', bquote(~Log[2]~ 'Fold change & p-adj')),
-                legendLabSize = 14,
-                legendIconSize = 4.0,
-                drawConnectors = F,
-                widthConnectors = 1.0,
-                colConnectors = 'black')
-
-#This is for the second co-efficient of the design which is "age_Kid_vs_Adult" without the effect of treatment ~ resCon
-resAge <- results(ddsCon, tidy = F, name = "age_Kid_vs_Adult", alpha = 0.05)
-res <- resAge
-res$log2FoldChange
-keyvals <- ifelse(
-  res$log2FoldChange < -1.5, 'royalblue',
-  ifelse(res$log2FoldChange > 1.5, 'gold',
-         'black'))
-
-keyvals
-keyvals[is.na(keyvals)] <- 'black'
-names(keyvals)[keyvals == 'gold'] <- 'high'
-names(keyvals)[keyvals == 'black'] <- 'mid'
-names(keyvals)[keyvals == 'royalblue'] <- 'low'
-
-res$padj
-EnhancedVolcano(res,
-                lab = rownames(res),
-                x = 'log2FoldChange',
-                y = 'padj', 
-                selectLab = rownames(res)[which(names(keyvals) %in% c('high', 'low'))],
-                #selectLab = c('OASL','CXCL10','ISG15', 'USP41','IFITM1','MX1'),
-                xlab = bquote(~Log[2]~ 'fold change'),
-                title = 'Volcano plot - Difference between Kids compared to Adults',
-                subtitle = '~ without the treatment effect(i.e. virus infection)',
-                pCutoff = 0.05,
-                FCcutoff = 1.5,
-                pointSize = 2.0,
-                labSize = 3.0,
-                labCol = 'black',
-                labFace = 'bold',
-                boxedLabels = F,
-                colAlpha = 4/5,
-                ylim = c(0,5.25),
-                xlim = c(-10,10),
-                legendLabels = c("NS", bquote(~Log[2]~ 'Fold change (1.5)'), 'p-adj(0.05)', bquote(~Log[2]~ 'Fold change & p-adj')),
-                legendPosition = 'right',
-                legendLabSize = 14,
-                legendIconSize = 4.0,
-                drawConnectors = F,
-                widthConnectors = 1.0,
-                colConnectors = 'black')
-
-####################################### ~ Differential gene expression of given genes ~ #####
+####################################### ~ Differential gene expression of given genes ~ ######################################
 colData(ddsKEEP)
 ddsKEEP$condition
 (topGene <- rownames(resAge)[which.min(resAge$padj)])
@@ -389,7 +343,7 @@ scaled.mat<-t(scale(t(mat)))
 t <- scaled.mat[,c(TRUE, FALSE)]
 head(scaled.mat)
 sampleCondition
-
+dev.off()
 heatmap.2(scaled.mat, col=col.pan, Rowv=TRUE, scale="none",
           trace="none", labRow= "",margins = c(10,8),cexRow=0.5, cexCol=1, keysize=1,labCol = sampleCondition)
 
@@ -436,6 +390,8 @@ dev.off()
 select <- order(rowMeans(counts(ddsKEEP,normalized=TRUE)),
                 decreasing=TRUE)[1:20]
 
+select
+
 #Heatmap of the sample-to-sample distances
 sampleDists <- dist( t( assay(vsdata) ) )
 sampleDists
@@ -480,7 +436,7 @@ heatmap.2( assay(rld)[ topVarGenes, ], scale="row",
            trace="none", dendrogram="column",
            col = colorRampPalette( rev(brewer.pal(9, "RdBu")) )(255), margins = c(10,10),labCol = sampleCondition)
 
-####################################### ~ GO Enrichment analysis for NCBI based annotations ~ ####
+####################################### ~ GO Enrichment analysis for NCBI based annotations ~ #################################
 head(tx2gene)
 
 count_data <- tximport(files = sampleFiles,
@@ -493,7 +449,7 @@ head(count_data)
 #import data into DESeq2
 dds <- DESeqDataSetFromTximport(txi = count_data,
                                 colData = sampleTable,
-                                design = ~ age + condition : condition:age)
+                                design = ~ age + condition + condition:age)
 dds
 baselevel
 dds$age <- relevel(dds$age, ref = baselevel)
@@ -535,7 +491,7 @@ gene.vector
 (gene.vector)
 names(gene.vector)
 
-####################################### ~ Biomart GO::terms matching ~ #####
+####################################### ~ Biomart GO::terms matching*******************************########################
 # define biomart object
 ensembl<- useMart("ensembl")
 
@@ -590,7 +546,7 @@ capture.output(for(go in enriched.GO[1:88]) { print(GOTERM[[go]])
 goResults[goResults$ontology == 'BP',]
 goBPRes <- goResults[goResults$ontology == 'BP',] 
 
-####################################### ~ visualize the top 30 hits ~####
+####################################### ~ visualize the top 30 hits*****************************##########################
 pdf(paste0(resultsdir, "/", testgroup,"_goseq_enrichment.pdf"))
 goResults %>% 
   top_n(40, wt=-over_represented_pvalue) %>% 
@@ -640,8 +596,116 @@ goBPRes %>%
 
 write.csv(as.data.frame(goBPRes), file = paste0(resultsdir,"/", testgroup, myspecies, "_go_bp.csv"))
 
-####################################### ~ Gene Set Enrichment Analysis ~ ####
-####################################### ~ Gene Set Enrichment Analysis ~ ####
+####################################### ~ Volcano Plots with enhancedVolcano####
+ddsKEEP
+resultsNames(ddsKEEP)
+#This is for the With treatment what is the difference between the kid and the adult. ~ resCon
+#resLFC <- lfcShrink(ddsKEEP, coef = 2 , type = 'apeglm')
+#This is for the second co-efficient of the design which is "age_Kid_vs_Adult" without the effect of treatment ~ resCon
+resultsNames(ddsCon)
+resAge <- results(ddsCon, tidy = F, name = "age_Kid_vs_Adult", alpha = 0.05)
+res <- resAge
+res$log2FoldChange
+keyvals <- ifelse(
+  res$log2FoldChange < -1.5, 'royalblue',
+  ifelse(res$log2FoldChange > 1.5, 'gold',
+         'black'))
+
+keyvals
+keyvals[is.na(keyvals)] <- 'black'
+names(keyvals)[keyvals == 'gold'] <- 'high'
+names(keyvals)[keyvals == 'black'] <- 'mid'
+names(keyvals)[keyvals == 'royalblue'] <- 'low'
+
+res$padj
+vol1 <- EnhancedVolcano(res,
+                        lab = NA, #rownames(res),
+                        x = 'log2FoldChange',
+                        y = 'padj', 
+                        selectLab = NULL,#rownames(res)[which(names(keyvals) %in% c('high', 'low'))],
+                        #selectLab = c('OASL','CXCL10','ISG15', 'USP41','IFITM1','MX1'),
+                        xlab = bquote(~Log[2]~ 'fold change'),
+                        title = NULL, #'Volcano plot - Difference in Kids compared to Adults ',
+                        subtitle = NULL, #'~ without treatment effect(i.e. without Virus infection)',
+                        pCutoff = 0.05,
+                        FCcutoff = 1.5,
+                        pointSize = 4.0,
+                        labSize = 3.0,
+                        labCol = 'black',
+                        labFace = 'bold',
+                        boxedLabels = F,
+                        ylim = c(0,2.5),
+                        xlim = c(-8,8),
+                        colAlpha = 3/4,
+                        gridlines.major = F,
+                        gridlines.minor = F,
+                        col = c("grey30", "palegreen3", "lightslateblue", "orangered2"),
+                        legendPosition = c(0.9, 0.9),
+                        legendLabels = c("NS", bquote(~Log[2]~'fold change (±1.5)'), 'p-adj < 0.05', bquote(~Log[2]~ 'fold change & p-adj')),
+                        legendLabSize = 12,
+                        legendIconSize = 4.0,axisLabSize = 12,
+                        drawConnectors = F,
+                        widthConnectors = 1.0, caption = NULL,
+                        colConnectors = 'black') 
+
+vol1 = vol1 + ggplot2::theme(axis.text.y = element_blank(),text = element_text(family = 'serif')) + scale_y_continuous(breaks=NULL) 
+print(vol1)
+
+dds
+keep <- rowSums(counts(dds)) > 10
+ddsCon <- dds[keep,]
+ddsCon <- DESeq(ddsCon)
+####################################### ~ EnhancedVolcano: Effect of virus in between kids and adults #####
+resCon <- results(ddsCon, tidy = F, list(c("age_Kid_vs_Adult", "ageKid.conditionVirus")), alpha = 0.05)
+res <- resCon
+res$log2FoldChange
+keyvals <- ifelse(
+  res$log2FoldChange < -1.5, 'royalblue',
+  ifelse(res$log2FoldChange > 1.5, 'gold',
+         'black'))
+
+keyvals[is.na(keyvals)] <- 'black'
+names(keyvals)[keyvals == 'gold'] <- 'high'
+names(keyvals)[keyvals == 'black'] <- 'mid'
+names(keyvals)[keyvals == 'royalblue'] <- 'low'
+
+vol2 <- EnhancedVolcano(res,
+                        lab = NA, #rownames(res),
+                        x = 'log2FoldChange',
+                        y = 'padj', 
+                        selectLab = NULL, #rownames(res)[which(names(keyvals) %in% c('high', 'low'))],
+                        #selectLab = c('OASL','CXCL10','ISG15', 'USP41','IFITM1','MX1'),
+                        xlab = bquote(~Log[2]~ 'fold change'),
+                        title = NULL, #'Volcano plot - Difference in Kids compared to Adults ',
+                        subtitle = NULL, #'~ without treatment effect(i.e. without Virus infection)',
+                        pCutoff = 0.05,
+                        FCcutoff = 1.5,
+                        pointSize = 3,
+                        labSize = 3.0,
+                        labCol = 'black',
+                        labFace = 'bold',
+                        boxedLabels = F,
+                        ylim = c(0,2.5),
+                        xlim = c(-10,10),
+                        colAlpha = 3/4,
+                        gridlines.major = F,
+                        gridlines.minor = F,
+                        col = c("grey30", "palegreen3", "lightslateblue", "orangered2"),
+                        legendPosition = c(0.85, 0.7),
+                        legendLabels = c("NS", bquote(~Log[2]~'fold change (±1.5)'), 'p-adj < 0.05', bquote(~Log[2]~ 'fold change & p-adj')),
+                        legendLabSize = 8,
+                        legendIconSize = 2.5,
+                        drawConnectors = F,
+                        widthConnectors = 1.0, caption = NULL,
+                        colConnectors = 'black') 
+
+vol2
+vol2 = vol2 + ggplot2::theme(axis.text.y = element_blank(), axis.title = element_text(size = 12),
+                             text = element_text(family = 'serif', face = 'bold')) + 
+  scale_y_continuous(breaks=NULL) 
+print(vol2)
+
+####################################### ~ Gene Set Enrichment Analysis ~ #############################
 dds <- DESeqDataSetFromTximport(txi = count_data,
                                 colData = sampleTable,
                                 design = ~ age + condition + age:condition)
@@ -658,6 +722,7 @@ ddsKEEP <- dds[keep,]
 ddsKEEP$sampleName
 
 ddsKEEP <- DESeq(ddsKEEP)
+###Difference between kids and adults without treatment effect
 resAge <- results(ddsKEEP, tidy = T, name = "age_Kid_vs_Adult", alpha = 0.05)
 
 res2 <- resAge %>% 
@@ -688,19 +753,61 @@ fgseaResTidy %>%
   arrange(padj) %>% 
   DT::datatable()
 
-p <-ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
-  geom_col(aes(fill=padj<0.05)) +
+t <- fgseaResTidy[fgseaResTidy$padj <= 0.05,]
+t$pathway
+t$leadingEdge[[17]]
+t$leadingEdge[[18]]
+t$leadingEdge[[23]]
+
+p1 <-ggplot(t, aes(reorder(pathway, NES), NES)) +
+  geom_col(aes(fill = padj)) +
   coord_flip() +
   labs(x="Pathway", y="Normalized Enrichment Score",
-       title="Hallmark pathways NES from GSEA") + 
-  theme_minimal()
+       title="Hallmark pathways NES from GSEA") +
+  theme(
+    legend.box      = "horizontal",
+    legend.key      = element_blank(),
+    legend.title    = element_text(family = 'serif'),
+    axis.title.y = element_text(family = 'serif'),
+    title = element_text(family = 'serif', size = 12, face = 'bold'),
+    axis.text.y = element_text(family = 'serif', size = 12),
+    panel.grid.minor = element_blank(), panel.grid.major = element_blank()
+  ) +
+  theme_bw() +
+  scale_fill_gradient(low="royalblue", high="royalblue4") +
+  theme(legend.position = c(0.8, 0.2))
 
-print(p)
-ggsave(p, file=paste0(resultsdir, "/", testgroup, "hallmark_fgsea_effect_of_treatment_irrespective_of_age",".png", sep = ""), width = 20, height = 28, units = "cm")
-pdf(paste0(resultsdir, "/", testgroup,"hallmark_fgsea_without_treatment.pdf"))
-print(p)
+print(p1)
+
+t <- head(t, 20)
+p1 <-ggplot(t, aes(reorder(pathway, NES), NES)) +
+  geom_col(aes(fill = padj)) +
+  coord_flip() +
+  labs(x="Pathway", y="Normalized Enrichment Score",
+       title="Hallmark pathways NES from GSEA") +
+  theme(
+    legend.box      = "horizontal",
+    legend.key      = element_blank(),
+    legend.title    = element_text(family = 'serif'),
+    axis.title.y = element_text(family = 'serif'),
+    title = element_text(family = 'serif', size = 12, face = 'bold'),
+    axis.text.y = element_text(family = 'serif', size = 12),
+    panel.grid.minor = element_blank(), panel.grid.major = element_blank()
+  ) +
+  theme_bw() +
+  scale_fill_gradient(low="royalblue", high="royalblue4") +
+  theme(legend.position = c(0.8, 0.2))
+
+ggsave(p1, file=paste0(resultsdir, "/", testgroup, "hallmark_fgsea_difference_between_age_without_treatment_effect",".png", sep = ""), width = 20, height = 28, units = "cm")
+pdf(paste0(resultsdir, "/", testgroup,"hallmark_fgsea_difference_between_age_without_treatment_effect.pdf"))
+print(p1)
+dev.off()
+tiff(file = paste0(resultsdir, "/", testgroup, "hallmark_fgsea_difference_between_age_without_treatment_effect.tiff"), width = 3200, height = 3200, units = "px", res = 800)
+print(p1)
 dev.off()
 
+p1
+###With treatment what is the different between Kids and adults
 resCon <- results(ddsKEEP, tidy = T, list(c("age_Kid_vs_Adult", "ageKid.conditionVirus")), alpha = 0.05)
 
 res2 <- resCon %>% 
@@ -720,7 +827,7 @@ pathways.hallmark %>%
   head() %>% 
   lapply(head)
 
-fgseaRes <- fgsea(pathways=pathways.hallmark, stats=ranks) #nperm = 1000)
+fgseaRes <- fgsea(pathways=pathways.hallmark, stats=ranks) 
 
 fgseaResTidy <- fgseaRes %>%
   as_tibble() %>%
@@ -731,74 +838,320 @@ fgseaResTidy %>%
   arrange(padj) %>% 
   DT::datatable()
 
-p <-ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
-  geom_col(aes(fill=padj<0.05)) +
+t <- fgseaResTidy[fgseaResTidy$padj <= 0.05,]
+
+t$pathway
+t$leadingEdge[[21]]
+
+p2 <-ggplot(t, aes(reorder(pathway, NES), NES)) +
+  geom_col(aes(fill = padj)) +
   coord_flip() +
   labs(x="Pathway", y="Normalized Enrichment Score",
-       title="Hallmark pathways NES from GSEA") + 
-  theme_minimal()
+       title="Hallmark pathways NES from GSEA") +
+  theme(
+    legend.box      = "horizontal",
+    legend.key      = element_blank(),
+    legend.title    = element_text(family = 'serif', face = 'bold'),
+    axis.title.y = element_text(family = 'serif',hjust = 0.8),
+    title = element_text(family = 'serif', size = 10, face = 'bold'),
+    axis.text.y = element_text(family = 'serif', size = 8),
+    panel.grid.minor = element_blank(), panel.grid.major = element_blank()
+  ) +
+  theme_bw() +
+  scale_fill_gradient(low="royalblue", high="royalblue4") +
+  theme(legend.position = c(0.8, 0.2))
 
-print(p)
-ggsave(p, file=paste0(resultsdir, "/", testgroup, "hallmark_fgsea_difference_across_age_group_without_treatment_effect",".png", sep = ""), width = 20, height = 28, units = "cm")
-pdf(paste0(resultsdir, "/", testgroup,"hallmark_fgsea_without_treatment.pdf"))
-print(p)
-dev.off()
+print(p2)
 
-resCon <- results(ddsKEEP, tidy = T, name = "age_Kid_vs_Adult")
 
-res2 <- resCon %>% 
-  dplyr::select(row, stat) %>% 
-  na.omit() %>% 
-  distinct() %>% 
-  group_by(row) %>% 
-  summarize(stat=mean(stat))
+t <- head(t, 20)
 
-res2
-ranks <- tibble::deframe(res2)
-head(ranks, 20)
-
-pathways.hallmark <- gmtPathways("../../h.all.v7.2.symbols.gmt")
-
-pathways.hallmark %>% 
-  head() %>% 
-  lapply(head)
-
-fgseaRes <- fgsea(pathways=pathways.hallmark, stats=ranks) #nperm = 1000)
-
-fgseaResTidy <- fgseaRes %>%
-  as_tibble() %>%
-  arrange(desc(NES))
-
-fgseaResTidy %>% 
-  dplyr::select(-leadingEdge, -ES) %>% 
-  arrange(padj) %>% 
-  DT::datatable()
-
-p <-ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
-  geom_col(aes(fill=padj<0.05)) +
+p2 <-ggplot(t, aes(reorder(pathway, NES), NES)) +
+  geom_col(aes(fill = padj)) +
   coord_flip() +
   labs(x="Pathway", y="Normalized Enrichment Score",
-       title="Hallmark pathways NES from GSEA") + 
-  theme_minimal()
+       title="Hallmark pathways NES from GSEA") +
+  theme(
+    legend.box      = "horizontal",
+    legend.key      = element_blank(),
+    legend.title    = element_text(family = 'serif', face = 'bold'),
+    axis.title.y = element_text(family = 'serif',hjust = 0.8),
+    title = element_text(family = 'serif', size = 10, face = 'bold'),
+    axis.text.y = element_text(family = 'serif', size = 8),
+    panel.grid.minor = element_blank(), panel.grid.major = element_blank()
+  ) +
+  theme_bw() +
+  scale_fill_gradient(low="royalblue", high="royalblue4") +
+  theme(legend.position = c(0.8, 0.2))
 
-print(p)
-ggsave(p, file=paste0(resultsdir, "/", testgroup, "hallmark_fgsea_effect_of_treatment_irrespective_of_age",".png", sep = ""), width = 20, height = 28, units = "cm")
-pdf(paste0(resultsdir, "/", testgroup,"hallmark_fgsea_without_treatment.pdf"))
-print(p)
+print(p2)
+
+
+ggsave(p2, file=paste0(resultsdir, "/", testgroup, "hallmark_fgsea_difference_across_age_group_with_treatment_effect",".png", sep = ""), width = 20, height = 28, units = "cm")
+pdf(paste0(resultsdir, "/", testgroup,"hallmark_fgsea_with_treatment.pdf"))
+print(p2)
 dev.off()
+
+tiff(file = paste0(resultsdir, "/", testgroup, "hallmark_fgsea_difference_across_age_group_with_treatment_effect.tiff"), width = 3200, height = 3200, units = "px", res = 800)
+print(p2)
+dev.off()
+
 resultsNames(ddsKEEP)
 
-####################################### ~ MY Interaction plots ~ ####
+####################################### ~ Whole transcriptome PCA analysis ~ ####################################
+library(PCAtools)
+library(dplyr)
+
+ageclass <- "mocks"
+
+directory <- "D:/17.SARSC-V2_experiment/"
+
+setwd("D:/17.SARSC-V2_experiment/R-project/SCVO2_KVSA/")
+resultsdir <- paste0(directory, "results")
+testgroup <- "within_age_PCA_without_the_effect_of_treatment"
+
+resdir <- "/salmon_res/"
+
+dir.create(paste0(resultsdir))
+resultsdir
+dir.create(paste0( resultsdir, resdir))
+
+resultsdir <- paste0(resultsdir, resdir)
+resultsdir
+dir.create(paste0(resultsdir, ageclass))
+resultsdir <- paste0(resultsdir, ageclass)
+resultsdir
+
+
+#Adult_vs_Kids_Mock_samples
+MyreadCountMatrix <- read.table(paste0(resultsdir, '/', ageclass, "_hsapiens_normalized_counts.txt"), 
+                                sep = '\t', header = T)
+
+head(MyreadCountMatrix)
+MyreadCountMatrix
+
+df <- (dplyr::select(MyreadCountMatrix, -X))
+
+head(df)
+df
+dfmock <- df[,!c(TRUE, FALSE)]
+head(dfmock)
+
+metadata <- data.frame(row.names = colnames(df))
+metadata$Group <- rep(NA, ncol(df))
+metadata
+metadata$Group[seq(1,20,2)] <- 'Virus'
+metadata$Group[seq(2,20,2)] <- 'Mock'
+metadata$CRP <- sample.int(100, size=ncol(df), replace=TRUE)
+metadata$ESR <- sample.int(100, size=ncol(df), replace=TRUE)
+
+metadata
+metamock <- metadata[metadata$Group == "Mock",]
+
+metadata <- metamock
+metadata
+
+metadata$age <- "Adult" 
+metadata[6:10,]$age <- "Kid"
+metadata
+
+pca(dfmock, metadata = metadata)
+p <- pca(dfmock, metadata = metadata)
+
+p$rotated
+df <- p$rotated
+df$Age <- rep("Adult", 10)
+df[6:10,]$Age <- "Paediatric" 
+df$Age
+resultsdir
+pca1_df <- df
+write.table(pca1_df, file = paste0(resultsdir, '/pca1_data_frame.txt'), sep = '\t')
+library(ggalt)
+pca <- ggplot(df, aes(x = PC1, y = PC4, fill = Age))+
+  geom_point(aes(colour = Age)) +
+  theme(axis.text.x = element_text(face = "bold",
+                                   color = "black",
+                                   size = 12),
+        axis.text.y = element_text(face = "bold",
+                                   color = "black",
+                                   size = 12),
+        axis.title = element_text(colour = "black", size = 12, face = "bold"))+
+  geom_encircle(alpha = 0.2, show.legend = FALSE)
+
+
+print(pca)
+
+df <- df %>%
+  mutate(color = ifelse(Age == "Paediatric", "orangered2",
+                        ifelse(Age == "Adult", "lightslateblue", "none")))
+
+df <- df[order(df$Age, decreasing = T), ]
+df$color <- as.factor(df$color)
+col <- as.character(df$color)
+pca1 <- ggplot(df, aes(x = PC1, y = PC4, color = color))+
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.line.x = element_line(size = 1),
+        axis.line.y = element_line(size = 1),
+        legend.position = c(0.9, 0.8),
+        text = element_text(size = 12),      
+        axis.title = element_text(colour = "black", size = 12, face = "bold"),
+        legend.title = element_blank(),#element_text(color = "black", size = 12, face = "bold"),
+        legend.text = element_text(colour = "black", size = 10, face = "bold"),
+        legend.background = element_blank(),#element_rect(fill = "grey", size = 0.5),
+        legend.direction = "horizontal",
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(breaks=NULL) +
+  scale_x_continuous(breaks = NULL) +
+  geom_encircle(alpha = 0.2, show.legend = FALSE) 
+  #stat_ellipse(aes(fill = color), geom = "polygon", level = 0.8, alpha=0.2) +
+  
+  
+pca1 <- pca1 + geom_point(size = 4) + scale_color_manual(values = c("lightslateblue", "orangered2"), 
+                                         labels = c("Adult", "Paediatric")) 
+
+print(pca1)
+
+#Adult_vs_Kid_virus_samples
+MyreadCountMatrix <- read.table(paste0(resultsdir, '/', ageclass, "_hsapiens_normalized_counts.txt"), 
+                                sep = '\t', header = T)
+
+head(MyreadCountMatrix)
+MyreadCountMatrix
+
+df <- (dplyr::select(MyreadCountMatrix, -X))
+
+head(df)
+df
+dfmock <- df[,!c(FALSE, TRUE)]
+head(dfmock)
+
+metadata <- data.frame(row.names = colnames(df))
+metadata$Group <- rep(NA, ncol(df))
+metadata
+metadata$Group[seq(1,20,2)] <- 'Virus'
+metadata$Group[seq(2,20,2)] <- 'Mock'
+metadata$CRP <- sample.int(100, size=ncol(df), replace=TRUE)
+metadata$ESR <- sample.int(100, size=ncol(df), replace=TRUE)
+
+metadata
+metavirus <- metadata[metadata$Group == "Virus",]
+
+metadata <- metavirus
+metadata
+
+metadata$age <- "Adult" 
+metadata[6:10,]$age <- "Kid"
+metadata
+
+pca(dfmock, metadata = metadata)
+p <- pca(dfmock, metadata = metadata)
+
+p$rotated
+df <- p$rotated
+df
+df$Age <- rep("Adult", 10)
+df[6:10,]$Age <- "Paediatric" 
+df$Age
+pca2df <- df
+write.table(pca2df, file = paste0(resultsdir, '/pca2_data_frame.txt'), sep = '\t')
+pca <- ggplot(df, aes(x = PC1, y = PC4, fill = Age))+
+  geom_point(aes(colour = Age)) +
+  theme(axis.text.x = element_text(face = "bold",
+                                   color = "black",
+                                   size = 12),
+        axis.text.y = element_text(face = "bold",
+                                   color = "black",
+                                   size = 12),
+        axis.title = element_text(colour = "black", size = 12, face = "bold"))+
+  geom_encircle(alpha = 0.2, show.legend = FALSE)
+
+
+print(pca)
+df <- df %>%
+  mutate(color = ifelse(Age == "Paediatric", "orangered2",
+                        ifelse(Age == "Adult", "lightslateblue", "none")))
+
+df <- df[order(df$Age, decreasing = T), ]
+df$color <- as.factor(df$color)
+col <- as.character(df$color)
+pca2 <- ggplot(df, aes(x = PC1, y = PC4, color = color))+
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.line.x = element_line(size = 1),
+        axis.line.y = element_line(size = 1),
+        legend.position = c(0.9, 0.8),
+        text = element_text(size = 12),      
+        axis.title = element_text(colour = "black", size = 12, face = "bold"),
+        legend.title = element_blank(),#element_text(color = "black", size = 12, face = "bold"),
+        legend.text = element_text(colour = "black", size = 10, face = "bold"),
+        legend.background = element_blank(),#element_rect(fill = "grey", size = 0.5),
+        legend.direction = "horizontal",
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  scale_y_continuous(breaks=NULL) +
+  scale_x_continuous(breaks = NULL) +
+  geom_encircle(alpha = 0.2, show.legend = FALSE) 
+#stat_ellipse(aes(fill = color), geom = "polygon", level = 0.8, alpha=0.2) +
+
+
+pca2 <- pca2 + geom_point(size = 4) + scale_color_manual(values = c("lightslateblue", "orangered2"), 
+                                                 labels = c("Adult", "Paediatric")) 
+print(pca2)
+####################################### ~ Combining plots ~ ########################################
+library(ggpubr)
+figure1 <-ggarrange(ggarrange(pca1, vol1, nrow = 2), 
+          p1, ncol = 2 )
+
+
+figure1 
+#annotate_figure(figure1,
+#                top = text_grob("Visualizing Tooth Growth",  size = 14, family = "serif"),
+#                bottom = text_grob("ToothGrowth data set", size = 14, family = "Times")
+#)
+
+pdf(paste0(resultsdir, "/figure01.pdf"))
+print(figure1)
+dev.off()
+
+tiff(file = paste0(resultsdir, "/figure1.tiff"), width = 3200, height = 3200, units = "px", res = 800)
+print(figure1)
+dev.off()
+resultsdir
+ggsave(figure1, file=paste0(resultsdir, "/figure1",".png", sep = ""), width = 30, height = 34, units = "cm")
+
+graphics.off()
+figure2 <-ggarrange(ggarrange(pca2, vol2, nrow = 2), 
+                    p2, ncol = 2, widths = c(0.3, 0.7))
+
+
+#source('GO_enrichment_plots.R')
+#figure2 <- ggarrange(figure2, goplots, nrow = 2, heights = c(0.5, 0.5))
+figure2
+
+figure2 <-ggarrange(ggarrange(pca2, vol2, nrow = 2), 
+                    p2, ncol = 2 )
+
+figure2
+#figure2 + theme(text = element_text(size = 8))
+pdf(paste0(resultsdir, "/figure02.pdf"))
+print(figure2)
+dev.off()
+
+tiff(file = paste0(resultsdir, "/figure2.tiff"), width = 3200, height = 3200, units = "px", res = 800)
+print(figure2)
+dev.off()
+resultsdir
+ggsave(figure2, file=paste0(resultsdir, "/figure2",".png", sep = ""), width = 30, height = 34, units = "cm")
+print(figure2)
+####################################### ~ MY Interaction plots ##################################
 source("myineract_plot.R") 
 source("pilot_config.R") #Interaction analysis 
-
 dds <- DESeqDataSetFromTximport(txi = count_data,
                                 colData = sampleTable,
                                 design = ~ age + condition + age:condition)
 
-dds <- DESeqDataSetFromTximport(txi = count_data,
-                                colData = sampleTable,
-                                design = ~ age + condition + age:condition)
 
 design(dds) #Verify desing 
 ddsmult <- estimateSizeFactors(dds)
@@ -854,6 +1207,6 @@ head(r1)
 r0 %>% filter(row %in% topgenes)
 r1 %>% filter(row %in% topgenes)
 r2 %>% filter(row %in% topgenes)
-####################################### ~ end of analysis ~ ####
-graphics.off()
-rm(list = ls())
+####################################### ~ end of analysis ####
+#graphics.off()
+#rm(list = ls())
