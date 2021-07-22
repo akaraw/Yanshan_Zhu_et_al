@@ -1,0 +1,84 @@
+##--------------------------------------------------------------------------------------##
+##SARSCOV2 - transcript quantification for DGE analysis in Nasal Epithelial Cells
+## Variables declaration
+## Declaring some variables used by other tools...
+## (GTF file, INDEX, chromosome length etc)
+# Adapt the path to your needs
+#*Create a salmon index for the transcriptome*#
+##--------------------------------------------------------------------------------------##
+import glob
+import os
+BASE_DIR = "/scratch/project/immunomics_ksgrp/SARS_COV2/analysis01"
+WDIR = BASE_DIR + "/human"
+transcript = "/30days/uqakaraw/127.SARS_CoV2_GENECODE/transcrptiome/gencode.v36.transcripts.fa"
+TRANSDIR = BASE_DIR + "/transcriptome"
+SAMPLES, = glob_wildcards( WDIR + "/{smp}_R1_001.fastq.gz")
+##--------------------------------------------------------------------------------------##
+## The list of samples to be processed
+##--------------------------------------------------------------------------------------##
+NB_SAMPLES = len(SAMPLES)
+print(NB_SAMPLES)
+
+rule all:
+        input:
+         outf = expand("fastqc/{smp}/{smp}_R1_001_fastqc",smp=SAMPLES),
+         #outs = expand("results/salmon_quant/{smp}", smp=SAMPLES),
+         #outk = expand("results/quant/{smp}",smp=SAMPLES),
+         #out = expand("results/trimmed/{smp}/{smp}_trimmed.fq.gz",smp=SAMPLES),
+         #out_kal = "kallisto.index.done",
+         #out = expand("results/trimmed/{smp}/{smp}_val_1.fq",smp=SAMPLES),
+         #out_kal = "kallisto.index.done"
+
+rule fastqc1:
+        input:
+         se= WDIR + "/{smp}_R1_001.fastq.gz",
+        output:
+         direct = directory("fastqc/{smp}/{smp}_R1_001_fastqc"),
+        conda: "env/transcriptome.yaml"
+        message: """--- Quality check of raw data with Fastqc."""
+        shell:
+         "mkdir -p fastqc && fastqc --outdir fastqc/{wildcards.smp} --extract -f fastq {input.se}"
+
+rule trimming:
+        input:
+         se = WDIR + "/{smp}_R1_001.fastq.gz",
+         checkpoint = rules.fastqc1.output.direct
+        output:
+         trimmed=temp("results/trimmed/{smp}/{smp}_trimmed.fq.gz")
+        message: """--- Trimming."""
+        conda: "env/transcriptome.yaml"
+        threads: 4
+        params:
+         base = "results/trimmed/{smp}"
+        message: """--- Trimming adaptors and bad bases using Trimgalore ---"""
+        shell:
+         "trim_galore --fastqc --phred33 --basename {wildcards.smp} -j {threads} --output_dir {params.base} --length 36 -q 5 --stringency 1 -e 0.1 "
+         "{input.se} > {wildcards.smp}.output.out 2>&1"
+
+rule fastqc2:
+        input:
+         se= rules.trimming.output.trimmed,
+        output:
+         direct = directory("fastqc/{smp}_2/{smp}_R1_001_fastqc"),
+        conda: "env/transcriptome.yaml"
+        message: """--- Quality check of raw data with Fastqc."""
+        shell:
+         "mkdir -p fastqc && fastqc --outdir fastqc/{wildcards.smp}_2 --extract -f fastq {input.se}"
+
+print(transcript)
+
+#doi: 10.1038/nmeth.4197
+rule salmon_quant:
+        input:
+         se = rules.trimming.output.trimmed,
+         checkpoint = rules.fastqc2.output.direct
+        params:
+         ind = "index_salmon_v36_k31",
+         libtype = "A",
+         genemap = "gencode.v36.annotation.gtf"
+        output:
+         auxdir = directory("results/salmon_quant/{smp}")
+        threads: 24
+        conda: "env/salmon.yaml"
+        shell:
+         "salmon quant -i {params.ind} -l {params.libtype} -g {params.genemap} -r {input.se} --validateMappings -o {output.auxdir}"
