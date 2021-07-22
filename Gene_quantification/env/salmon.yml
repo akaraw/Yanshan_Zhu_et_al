@@ -1,0 +1,19 @@
+name: salmon
+channels:
+  - r
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=1_gnu
+  - bzip2=1.0.8=h7f98852_4
+  - icu=64.2=he1b5a44_1
+  - jemalloc=5.2.1=he1b5a44_4
+  - libgcc-ng=9.3.0=h5dbcf3e_17
+  - libgomp=9.3.0=h5dbcf3e_17
+  - libstdcxx-ng=9.3.0=h2ae2ef3_17
+  - salmon=1.4.0=hf69c8f4_0
+  - tbb=2020.2=h4bd325d_1
+  - zlib=1.2.11=h516909a_1010
+prefix: /90days/uqakaraw/miniconda3/envs/salmon
