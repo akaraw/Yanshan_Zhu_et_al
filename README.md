@@ -10,3 +10,5 @@ This repository containsscripts used for differential gene expression analysis i
 #Running under: Windows 10 x64 (build 19043)
 
 #UQ - RCC HPC(Tinaroo)
+
+Pre-release version 1.0
