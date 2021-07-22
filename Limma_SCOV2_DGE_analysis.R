@@ -571,7 +571,3 @@ ggplot(goEnrichment, aes(x=Term, y=-log10(KS))) +
 
 #https://www.biostars.org/p/350710/
 sessionInfo()
-
-
-
-
