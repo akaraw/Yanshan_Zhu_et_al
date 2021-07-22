@@ -21,20 +21,18 @@ print(NB_SAMPLES)
 
 rule all:
         input:
-         outf = expand("fastqc/{smp}/{smp}_R1_001_fastqc",smp=SAMPLES),
-         #outs = expand("results/salmon_quant/{smp}", smp=SAMPLES),
+         #outf = expand("fastqc/{smp}/{smp}_R1_001_fastqc",smp=SAMPLES),
+         outs = expand("results/salmon_quant/{smp}", smp=SAMPLES),
          #outk = expand("results/quant/{smp}",smp=SAMPLES),
          #out = expand("results/trimmed/{smp}/{smp}_trimmed.fq.gz",smp=SAMPLES),
-         #out_kal = "kallisto.index.done",
          #out = expand("results/trimmed/{smp}/{smp}_val_1.fq",smp=SAMPLES),
-         #out_kal = "kallisto.index.done"
-
+         
 rule fastqc1:
         input:
          se= WDIR + "/{smp}_R1_001.fastq.gz",
         output:
          direct = directory("fastqc/{smp}/{smp}_R1_001_fastqc"),
-        conda: "env/transcriptome.yaml"
+        conda: "env/transcriptome.yml"
         message: """--- Quality check of raw data with Fastqc."""
         shell:
          "mkdir -p fastqc && fastqc --outdir fastqc/{wildcards.smp} --extract -f fastq {input.se}"
@@ -46,7 +44,7 @@ rule trimming:
         output:
          trimmed=temp("results/trimmed/{smp}/{smp}_trimmed.fq.gz")
         message: """--- Trimming."""
-        conda: "env/transcriptome.yaml"
+        conda: "env/transcriptome.yml"
         threads: 4
         params:
          base = "results/trimmed/{smp}"
@@ -60,7 +58,7 @@ rule fastqc2:
          se= rules.trimming.output.trimmed,
         output:
          direct = directory("fastqc/{smp}_2/{smp}_R1_001_fastqc"),
-        conda: "env/transcriptome.yaml"
+        conda: "env/transcriptome.yml"
         message: """--- Quality check of raw data with Fastqc."""
         shell:
          "mkdir -p fastqc && fastqc --outdir fastqc/{wildcards.smp}_2 --extract -f fastq {input.se}"
@@ -79,6 +77,6 @@ rule salmon_quant:
         output:
          auxdir = directory("results/salmon_quant/{smp}")
         threads: 24
-        conda: "env/salmon.yaml"
+        conda: "env/salmon.yml"
         shell:
          "salmon quant -i {params.ind} -l {params.libtype} -g {params.genemap} -r {input.se} --validateMappings -o {output.auxdir}"
